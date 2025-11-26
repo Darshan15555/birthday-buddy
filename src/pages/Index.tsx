@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, Cake, Sparkles } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { toast } from "sonner";
-import BirthdayCard from "@/components/BirthdayCard";
 import AddBirthdayDialog from "@/components/AddBirthdayDialog";
-import { differenceInDays, addYears, isBefore } from "date-fns";
+import { format, differenceInDays, addYears, isBefore } from "date-fns";
 
 interface Birthday {
   id: string;
@@ -88,76 +87,49 @@ const Index = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(350_85%_62%/0.08),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(45_100%_70%/0.08),transparent_50%)]" />
-      
-      <div className="relative max-w-4xl mx-auto p-6 space-y-8">
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-              <Cake className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Birthday Reminder
-              </h1>
-              <p className="text-sm text-muted-foreground">Never miss a special day</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Upcoming Birthdays</h1>
           <Button
-            variant="outline"
+            variant="ghost"
+            size="sm"
             onClick={handleLogout}
             className="gap-2"
           >
             <LogOut className="w-4 h-4" />
             Logout
           </Button>
-        </header>
+        </div>
 
         {/* Add Birthday Button */}
-        <div className="flex justify-center">
-          <AddBirthdayDialog onBirthdayAdded={fetchBirthdays} />
-        </div>
+        <AddBirthdayDialog onBirthdayAdded={fetchBirthdays} />
 
         {/* Birthdays List */}
-        <div className="space-y-6">
-          {isLoading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="mt-4 text-muted-foreground">Loading birthdays...</p>
-            </div>
-          ) : birthdays.length === 0 ? (
-            <div className="text-center py-12 space-y-4">
-              <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
-                <Sparkles className="w-10 h-10 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="text-xl font-display font-semibold mb-2">No birthdays yet</h3>
-                <p className="text-muted-foreground">
-                  Start adding birthdays to never miss a special day!
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <h2 className="text-xl font-display font-semibold mb-4 flex items-center gap-2">
-                <Cake className="w-5 h-5 text-primary" />
-                Upcoming Birthdays
-              </h2>
-              <div className="grid gap-4">
-                {birthdays.map((birthday) => (
-                  <BirthdayCard
-                    key={birthday.id}
-                    name={birthday.name}
-                    dateOfBirth={birthday.date_of_birth}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        {isLoading ? (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+        ) : birthdays.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            No birthdays yet. Add your first birthday above!
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {birthdays.map((birthday) => (
+              <li
+                key={birthday.id}
+                className="flex justify-between items-center p-4 border rounded-lg bg-card"
+              >
+                <span className="font-medium">{birthday.name}</span>
+                <span className="text-muted-foreground">
+                  {format(new Date(birthday.date_of_birth), "MMMM d, yyyy")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
