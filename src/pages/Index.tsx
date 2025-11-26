@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Pencil, Trash } from "lucide-react";
 import { toast } from "sonner";
 import AddBirthdayDialog from "@/components/AddBirthdayDialog";
+import EditBirthdayDialog from "@/components/EditBirthdayDialog"; // Import the new component
 import { format, differenceInDays, addYears, isBefore } from "date-fns";
 
 interface Birthday {
@@ -17,6 +18,8 @@ const Index = () => {
   const [user, setUser] = useState<any>(null);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null); // State for the birthday being edited
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false); // State for the edit dialog
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,7 +32,9 @@ const Index = () => {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         navigate("/auth");
       } else {
@@ -55,13 +60,21 @@ const Index = () => {
       const sortedBirthdays = (data || []).sort((a, b) => {
         const dateA = new Date(a.date_of_birth);
         const dateB = new Date(b.date_of_birth);
-        
-        let nextA = new Date(today.getFullYear(), dateA.getMonth(), dateA.getDate());
-        let nextB = new Date(today.getFullYear(), dateB.getMonth(), dateB.getDate());
-        
+
+        let nextA = new Date(
+          today.getFullYear(),
+          dateA.getMonth(),
+          dateA.getDate()
+        );
+        let nextB = new Date(
+          today.getFullYear(),
+          dateB.getMonth(),
+          dateB.getDate()
+        );
+
         if (isBefore(nextA, today)) nextA = addYears(nextA, 1);
         if (isBefore(nextB, today)) nextB = addYears(nextB, 1);
-        
+
         return differenceInDays(nextA, today) - differenceInDays(nextB, today);
       });
 
@@ -82,6 +95,22 @@ const Index = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Logged out successfully");
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from("birthdays").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Birthday removed successfully");
+      fetchBirthdays();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to remove birthday");
+    }
+  };
+
+  const handleEdit = (birthday: Birthday) => {
+    setEditingBirthday(birthday);
+    setIsEditDialogOpen(true);
   };
 
   if (!user) return null;
@@ -122,13 +151,44 @@ const Index = () => {
                 key={birthday.id}
                 className="flex justify-between items-center p-4 border rounded-lg bg-card"
               >
-                <span className="font-medium">{birthday.name}</span>
-                <span className="text-muted-foreground">
-                  {format(new Date(birthday.date_of_birth), "MMMM d, yyyy")}
-                </span>
+                <div className="flex-1">
+                  <span className="font-medium">{birthday.name}</span>
+                  <p className="text-muted-foreground text-sm">
+                    {format(new Date(birthday.date_of_birth), "MMMM d, yyyy")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(birthday)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(birthday.id)}
+                  >
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Edit Birthday Dialog */}
+        {editingBirthday && (
+          <EditBirthdayDialog
+            birthday={editingBirthday}
+            onBirthdayUpdated={() => {
+              fetchBirthdays();
+              setEditingBirthday(null);
+            }}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+          />
         )}
       </div>
     </div>

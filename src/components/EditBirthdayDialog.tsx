@@ -1,25 +1,42 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useEffect, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
-import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
-interface AddBirthdayDialogProps {
-  onBirthdayAdded: () => void;
+interface Birthday {
+  id: string;
+  name: string;
+  date_of_birth: string;
 }
 
-const AddBirthdayDialog = ({ onBirthdayAdded }: AddBirthdayDialogProps) => {
-  const [open, setOpen] = useState(false);
+interface EditBirthdayDialogProps {
+  birthday: Birthday;
+  onBirthdayUpdated: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const EditBirthdayDialog = ({ birthday, onBirthdayUpdated, open, onOpenChange }: EditBirthdayDialogProps) => {
   const [name, setName] = useState("");
   const [year, setYear] = useState<number>();
   const [month, setMonth] = useState<number>();
   const [day, setDay] = useState<number>();
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (birthday) {
+      setName(birthday.name);
+      const date = new Date(birthday.date_of_birth);
+      setYear(date.getFullYear());
+      setMonth(date.getMonth() + 1);
+      setDay(date.getDate());
+    }
+  }, [birthday]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,32 +51,21 @@ const AddBirthdayDialog = ({ onBirthdayAdded }: AddBirthdayDialogProps) => {
     setIsLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("You must be logged in to add birthdays");
-        return;
-      }
-
       const { error } = await supabase
         .from("birthdays")
-        .insert({
-          user_id: user.id,
+        .update({
           name: name.trim(),
           date_of_birth: format(date, "yyyy-MM-dd"),
-        });
+        })
+        .eq("id", birthday.id);
 
       if (error) throw error;
 
-      toast.success(`🎉 ${name}'s birthday has been added!`);
-      setName("");
-      setYear(undefined);
-      setMonth(undefined);
-      setDay(undefined);
-      setOpen(false);
-      onBirthdayAdded();
+      toast.success(`🎉 ${name}'s birthday has been updated!`);
+      onOpenChange(false);
+      onBirthdayUpdated();
     } catch (error: any) {
-      toast.error(error.message || "Failed to add birthday");
+      toast.error(error.message || "Failed to update birthday");
     } finally {
       setIsLoading(false);
     }
@@ -71,18 +77,12 @@ const AddBirthdayDialog = ({ onBirthdayAdded }: AddBirthdayDialogProps) => {
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="lg" className="shadow-lg hover:shadow-xl transition-all font-semibold">
-          <Plus className="w-5 h-5 mr-2" />
-          Add Birthday
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-display">Add a Birthday</DialogTitle>
+          <DialogTitle className="text-2xl font-display">Edit Birthday</DialogTitle>
           <DialogDescription>
-            Keep track of someone special's big day
+            Update the details for this special day.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -102,7 +102,7 @@ const AddBirthdayDialog = ({ onBirthdayAdded }: AddBirthdayDialogProps) => {
             <div className="grid grid-cols-3 gap-2 mt-2">
               <div className="space-y-2">
                 <Label htmlFor="year" className="sr-only">Year</Label>
-                <Select onValueChange={(value) => setYear(Number(value))}>
+                <Select value={String(year)} onValueChange={(value) => setYear(Number(value))}>
                   <SelectTrigger id="year">
                     <SelectValue placeholder="Year" />
                   </SelectTrigger>
@@ -115,7 +115,7 @@ const AddBirthdayDialog = ({ onBirthdayAdded }: AddBirthdayDialogProps) => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="month" className="sr-only">Month</Label>
-                <Select onValueChange={(value) => setMonth(Number(value))}>
+                <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
                   <SelectTrigger id="month">
                     <SelectValue placeholder="Month" />
                   </SelectTrigger>
@@ -128,7 +128,7 @@ const AddBirthdayDialog = ({ onBirthdayAdded }: AddBirthdayDialogProps) => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="day" className="sr-only">Day</Label>
-                <Select onValueChange={(value) => setDay(Number(value))}>
+                <Select value={String(day)} onValueChange={(value) => setDay(Number(value))}>
                   <SelectTrigger id="day">
                     <SelectValue placeholder="Day" />
                   </SelectTrigger>
@@ -146,7 +146,7 @@ const AddBirthdayDialog = ({ onBirthdayAdded }: AddBirthdayDialogProps) => {
             className="w-full font-semibold"
             disabled={isLoading}
           >
-            {isLoading ? "Adding..." : "Add Birthday"}
+            {isLoading ? "Updating..." : "Update Birthday"}
           </Button>
         </form>
       </DialogContent>
@@ -154,4 +154,4 @@ const AddBirthdayDialog = ({ onBirthdayAdded }: AddBirthdayDialogProps) => {
   );
 };
 
-export default AddBirthdayDialog;
+export default EditBirthdayDialog;
